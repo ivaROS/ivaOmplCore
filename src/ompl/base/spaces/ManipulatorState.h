@@ -93,7 +93,7 @@ class ManipulatorState
 		
 		}
 
-	        /* \brief Return end effector pose as 6x1 vector (x,y,z,Rx,Ry,Rz) */
+	        /* \brief Return end effector pose as 7x1 vector (x,y,z,Rx,Ry,Rz,Rw) */
 		Eigen::VectorXd getEefPose(Eigen::VectorXd jointState)
 		{	
         		//Set the kinematic state to have the proper joint values
@@ -123,10 +123,10 @@ class ManipulatorState
         		//offset from the base frame - leave at 0,0,0
         		Eigen::Vector3d reference_point_position(0.0,0.0,0.0);
         		Eigen::MatrixXd jacobian;
-        		kinematic_state->getJacobian(joint_model_group, kinematic_state->getLinkModel(joint_model_group->getLinkModelNames().back()),
+        		kinematic_state->getJacobian(joint_model_group, kinematic_state->getLinkModel(joint_model_group->getLinkModelNames()[6]/*joint_model_group->getLinkModelNames().back()*/),
                                      reference_point_position,
                                      jacobian, false /*true - Quaternion representation*/);
-        		return jacobian.block(0,0,3,jacobian.cols());
+        		return jacobian.block(0,0,6,jacobian.cols());
 	
                 }
 

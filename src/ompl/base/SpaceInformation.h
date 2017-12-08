@@ -92,7 +92,7 @@ namespace ompl
 
             virtual ~SpaceInformation()
             {
-            }
+            }          
 
             /** \brief Check if a given state is valid or not */
             bool isValid(const State *state) const
@@ -125,6 +125,11 @@ namespace ompl
             double distance(const State *state1, const State *state2) const
             {
                 return stateSpace_->distance(state1, state2);
+            }
+            
+            double getscore(const State *state1, const State *state2) const
+            {
+                return stateSpace_->getscore(state1, state2);
             }
 
             /** \brief Bring the state within the bounds of the state space */

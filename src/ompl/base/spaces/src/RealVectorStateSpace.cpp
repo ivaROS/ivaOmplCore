@@ -247,6 +247,11 @@ double ompl::base::RealVectorStateSpace::distance(const State *state1, const Sta
     return sqrt(dist);
 }
 
+double ompl::base::RealVectorStateSpace::getscore(const State *state1, const State *state2) const
+{
+    return distance(state1,state2);
+}
+
 bool ompl::base::RealVectorStateSpace::equalStates(const State *state1, const State *state2) const
 {
     const double *s1 = static_cast<const StateType*>(state1)->values;

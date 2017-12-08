@@ -30,13 +30,24 @@
 *********************************************************************/
 
 /* Author: Leo Keselman */
+#include <ros/ros.h>
+#include <time.h>
 
 #include "ompl/geometric/planners/rrt/ForageRRT.h"
+#include "ompl/base/spaces/ManipulatorStateSpace.h"
+
 #include <moveit/ompl_interface/parameterization/manipulator_space/manipulator_model_state_space.h>
+
+double time_coarse = 0.0;
+double time_fine = 0.0;
+double time_sampling = 0.0;
+double time_jacobian = 0.0;
+double time_collisioncheck = 0.0;
+int count_jacobian = 0;
 
 /** \brief Try to advance one stepSize towards tryState */
 ompl::geometric::ForageRRT::RRT::StepResult ompl::geometric::ForageRRT::RRT::tryStep( ompl::base::State *tryState, 
-										      Motion *returnMotion )
+                                              Motion *returnMotion )
 {
     Motion *tryToMotion   = new Motion(si_);
     tryToMotion->state = tryState;
@@ -49,28 +60,36 @@ ompl::geometric::ForageRRT::RRT::StepResult ompl::geometric::ForageRRT::RRT::try
     //std::cout<<"maxDistance_:"<<maxDistance_<<'\n';
     if (dist > maxDistance_)
     {
-	/* Cannot connect tryState directly to existing tree, interpolate from nearest neighbor */
+    /* Cannot connect tryState directly to existing tree, interpolate from nearest neighbor */
         ompl::base::State *interpedState = si_->allocState();
-	si_->getStateSpace()->interpolate(nearestMotion->state, tryState, maxDistance_ / dist, interpedState);
+        si_->getStateSpace()->interpolate(nearestMotion->state, tryState, maxDistance_, interpedState);
 
+        //clock_t begin = clock();
         if (si_->checkMotion(nearestMotion->state, interpedState))
         {
-	    /* New new state is valid (can connect without collision to existing state) */
-	    addNode(interpedState, nearestMotion);
+            /* New new state is valid (can connect without collision to existing state) */
+            //clock_t end = clock();  
+            //time_collisioncheck = time_collisioncheck + ((double)(end - begin))/CLOCKS_PER_SEC; 
+
+            addNode(interpedState, nearestMotion);
             returnMotion->state = interpedState;
-	    returnMotion->parent = nearestMotion;
-	    return STEP_PROGRESS;	
+            returnMotion->parent = nearestMotion;
+            return STEP_PROGRESS;   
         }
-	else
-	{
-	    return STEP_COLLISION;
-	}
-	    
+        
+        else
+        {
+            //clock_t end = clock();  
+            //time_collisioncheck = time_collisioncheck + ((double)(end - begin))/CLOCKS_PER_SEC; 
+
+            return STEP_COLLISION;
+        }
+        
     }
 
     /* Trystate and state to connect to it from are close enough to connect */
     ompl::base::State *interpedState = si_->allocState();
-    si_->getStateSpace()->interpolate(nearestMotion->state, tryState, maxDistance_ / dist, interpedState);
+    si_->getStateSpace()->interpolate(nearestMotion->state, tryState, maxDistance_, interpedState);
 
     addNode(interpedState, nearestMotion);
     returnMotion->state = interpedState;                 
@@ -81,51 +100,115 @@ ompl::geometric::ForageRRT::RRT::StepResult ompl::geometric::ForageRRT::RRT::try
 
 /** \brief Try to advance one stepSize towards goalState. Take step from top of Goal Map */
 ompl::geometric::ForageRRT::RRT::StepResult ompl::geometric::ForageRRT::RRT::tryStepToGoal( ompl::base::State *goalState, 
-									                    Motion *returnMotion )
+                                                        Motion *returnMotion )
 {
+    count_jacobian++;
     Motion *goalMotion   = new Motion(si_);
     goalMotion->state = goalState;
 
     /* find closest state in the tree to goal or random */
     Motion* fromMotion;
+    Motion* tempMotion;
 
-    if(rng_.uniform01() < .65 /*Magic number - make configurable */)
+    if(rng_.uniform01() < 1.0 /*Magic number - make configurable */)//.65
     {
-    	fromMotion = getBestGoalMotion();
+        fromMotion = getBestGoalMotion();
+        tempMotion = getBestGoalMotion();
     }
     else
     {
         fromMotion = getRandomGoalMotion();
+        tempMotion = getRandomGoalMotion();
     }
 
     /* find state to add */
     double dist = si_->distance(fromMotion->state, goalState);
-
     if (dist > maxDistance_)
     {
         /* Distance between the two points is not within fineStepSize_, so goal cannot be reached this step */
-	/* Interpolate between the two states */
-        ompl::base::State *interpedState = si_->allocState();
-        si_->getStateSpace()->interpolate(fromMotion->state, goalState, maxDistance_ / dist, interpedState);
-
-        if (si_->checkMotion(fromMotion->state, interpedState))
+    /* Interpolate between the two states */
+        if (maxDistance_ == 0.4)
         {
-	    /* New new state is valid (can connect without collision to existing state) */
-            addNode(interpedState, fromMotion);
-	    returnMotion->state = interpedState;
-	    returnMotion->parent = fromMotion;
-            return STEP_PROGRESS;
+            ompl::base::State *interpedState = si_->allocState();
+
+            //clock_t begin1 = clock(); 
+            si_->getStateSpace()->interpolate(fromMotion->state, goalState, maxDistance_, interpedState);
+            //clock_t end1 = clock();  
+            //time_jacobian = time_jacobian + ((double)(end1 - begin1))/CLOCKS_PER_SEC; 
+
+            //clock_t begin2 = clock(); 
+            if (si_->checkMotion(fromMotion->state, interpedState))
+            {
+            // New new state is valid (can connect without collision to existing state) 
+                //clock_t end2 = clock();  
+                //time_collisioncheck = time_collisioncheck + ((double)(end2 - begin2))/CLOCKS_PER_SEC;  
+
+                addNode(interpedState, fromMotion);
+                returnMotion->state = interpedState;
+                returnMotion->parent = fromMotion;
+                return STEP_PROGRESS;
+            }
+            else
+            {
+                //clock_t end2 = clock();  
+                //time_collisioncheck = time_collisioncheck + ((double)(end2 - begin2))/CLOCKS_PER_SEC; 
+
+                return STEP_COLLISION;
+            }
         }
+        
         else
         {
-            return STEP_COLLISION;
+            ompl::base::State *interpedState = si_->allocState();
+
+            int count = 0;
+            while(count < 10 && dist > 0.03)
+            {
+                //clock_t begin1 = clock();
+                si_->getStateSpace()->interpolate(tempMotion->state, goalState, maxDistance_, interpedState);
+                //clock_t end1 = clock();  
+                //time_jacobian = time_jacobian + ((double)(end1 - begin1))/CLOCKS_PER_SEC;
+
+                //clock_t begin2 = clock();
+                if (!si_->checkMotion(fromMotion->state, interpedState))
+                    if (count == 0)
+                    {
+                        //clock_t end2 = clock();  
+                        //time_collisioncheck = time_collisioncheck + ((double)(end2 - begin2))/CLOCKS_PER_SEC;
+
+                        return STEP_COLLISION;
+                    }
+                    else 
+                    {
+                        //clock_t end2 = clock();  
+                        //time_collisioncheck = time_collisioncheck + ((double)(end2 - begin2))/CLOCKS_PER_SEC;
+
+                        addNode(tempMotion->state, fromMotion);
+                        returnMotion->state = fromMotion->state;
+                        returnMotion->parent = fromMotion;
+                        return STEP_PROGRESS;
+                    }
+                //clock_t end2 = clock();  
+                //time_collisioncheck = time_collisioncheck + ((double)(end2 - begin2))/CLOCKS_PER_SEC;
+
+                count++;
+                //si_->getStateSpace()->as<ompl_interface::ManipulatorModelStateSpace>()->manipulator_state_space_->printState(tempMotion->state->as<ompl_interface::ManipulatorModelStateSpace::StateType>()->manipulator_state_,std::cout);
+                
+                si_->copyState(tempMotion->state,interpedState);
+                dist = si_->distance(interpedState,goalState);
+
+            }
+            addNode(interpedState, fromMotion);
+            returnMotion->state = interpedState;
+            returnMotion->parent = fromMotion;
+            return STEP_PROGRESS;
         }
-            
+          
     }
 
     /* Goal and state to connect to it from are close enough to connect */
     ompl::base::State *interpedState = si_->allocState();
-    si_->getStateSpace()->interpolate(fromMotion->state, goalState, maxDistance_ / dist, interpedState);
+    si_->getStateSpace()->interpolate(fromMotion->state, goalState, maxDistance_, interpedState);
 
     addNode(interpedState, fromMotion);
     returnMotion->state = interpedState;
@@ -160,7 +243,7 @@ ompl::geometric::ForageRRT::RRT::Motion* ompl::geometric::ForageRRT::RRT::getRan
     while(bestMotion->triedToGoal && GoalHeap_.size()>1){
             GoalHeap_.erase(bestMotion->value);
             it = GoalHeap_.begin();
-	    std::advance( it, (rand() % GoalHeap_.size()) );
+        std::advance( it, (rand() % GoalHeap_.size()) );
             bestMotion = it->second;
     }
     bestMotion->triedToGoal = true;
@@ -195,7 +278,9 @@ void ompl::geometric::ForageRRT::RRT::addNode( ompl::base::State* newState, Moti
 double ompl::geometric::ForageRRT::RRT::motionValue( const Motion* motion )
 {
     assert(goal_);
-    return si_->distance(motion->state, goal_);
+
+    return si_->getscore(motion->state, goal_);
+    //return si_->distance(motion->state, goal_);
 }
 
 /** \brief Follow parents of solution node to root and add to given path */
@@ -220,15 +305,15 @@ ompl::geometric::ForageRRT::ForageRRT(const base::SpaceInformationPtr &si) : bas
     specs_.approximateSolutions = true;
     specs_.directed = true;
 
-    fineRRTGoalBias_ = 0.05;
+    fineRRTGoalBias_ = .60;//0.10;
     lastGoalMotion_ = NULL;
-    fineStepSize_ = 0.01;
-    coarseStepSize_ = .2;
-    coarseRRTInitialSize_ = 100;//30;
-    coarseRRTGoalBias_ = .10;
-    maxFineNumCollisions_ = 20;
-    maxNumFineFailures_ = 10;
-    coarseRRTIncreaseSize_ = coarseRRTInitialSize_/3;
+    fineStepSize_ = 0.02;
+    coarseStepSize_ = .4;
+    coarseRRTInitialSize_ = 45;
+    coarseRRTGoalBias_ = .10;//0.10
+    maxFineNumCollisions_ = 10;
+    maxNumFineFailures_ = 5;
+    coarseRRTIncreaseSize_ = coarseRRTInitialSize_ / 3;
 }
 
 /** \brief Deconstructor. Frees memory occupied by planner */
@@ -284,13 +369,13 @@ void ompl::geometric::ForageRRT::growRRT(RRT *rrt, unsigned int size, double goa
     {
         if (goal_s && rng_.uniform01() < goalBias && goal_s->canSample())
         {
-	    /* Here we try to move toward the goal */
+        /* Here we try to move toward the goal */
             goal_s->sampleGoal(toState);
-	        rrt->tryStepToGoal(toState, newMotion);
+            rrt->tryStepToGoal(toState, newMotion);
         }
         else
         {
-	    /* Here we try to move toward a random point */
+        /* Here we try to move toward a random point */
             sampler_->sampleUniform(toState);
             rrt->tryStep(toState, newMotion);
         }
@@ -301,20 +386,16 @@ void ompl::geometric::ForageRRT::growRRT(RRT *rrt, unsigned int size, double goa
 ompl::base::PlannerStatus ompl::geometric::ForageRRT::solve(const base::PlannerTerminationCondition &ptc)
 {
     checkValidity();
-    
-    std::cout<<"retrieve goal state"<<std::endl;
+
     /* Retrieve goal state */
     base::Goal *goal = pdef_->getGoal().get();
     base::GoalSampleableRegion *goal_s = dynamic_cast<base::GoalSampleableRegion*>(goal);
     const ompl::base::State *goalState = pis_.nextGoal(ptc);  
- 
-    std::cout<<"set goal state for coarseRRT"<<std::endl;
+    
     coarseRRT_->setGoal(goalState);
-    std::cout<<"set goal state for fineRRT"<<std::endl;
     fineRRT_->setGoal(goalState);
 
     /* Add all start nodes to coarse RRT */
-    std::cout<<"add start nodes to coarseRRT"<<std::endl;
     while (const base::State *st = pis_.nextStart())
     {
         coarseRRT_->addNode(const_cast<base::State* const>(st), NULL);
@@ -329,14 +410,12 @@ ompl::base::PlannerStatus ompl::geometric::ForageRRT::solve(const base::PlannerT
     }
 
     /* Allocate state sampler if we do not have one */
-    std::cout<<"allocate state sampler"<<std::endl;
     if (!sampler_)
         sampler_ = si_->allocStateSampler();
 
     OMPL_INFORM("Starting with %u states already in datastructure", coarseRRT_->getSize());
 
     /* Allocate and initialize other planner variables */
-    std::cout<<"intialize other planner variables"<<std::endl;
     RRT::Motion *fineSolution  = NULL;
     RRT::Motion *coarseSolution = NULL;
     RRT::Motion *approxFineSol = NULL;
@@ -352,30 +431,36 @@ ompl::base::PlannerStatus ompl::geometric::ForageRRT::solve(const base::PlannerT
     unsigned int fineNumCollisions = 0;
 
     /* Grow the coarse RRT to its initial size */
-    std::cout<<"grow the coarseRRT to its initial size"<<std::endl;
+    //clock_t begin1 = clock(); 
     growRRT(coarseRRT_, coarseRRTInitialSize_, coarseRRTGoalBias_);
+    //clock_t end1 = clock();  
+    //time_coarse = time_coarse + ((double)(end1 - begin1))/CLOCKS_PER_SEC;    
 
-    /* Seed the fine RRT with the best node towards goal from the coarse RRT */	
-    std::cout<<"Seed the fine RRT with the best node towards goal from the coarse RRT"<<std::endl;
+    /* Seed the fine RRT with the best node towards goal from the coarse RRT */ 
     fineSeed = coarseRRT_->getBestGoalMotion();
     fineRRT_->addNode(fineSeed->state, NULL);
 
     /* Repeat until the goal state has been found */
+    //clock_t begin2 = clock(); 
     while (ptc == false)
     {
-	    RRT::StepResult result;
+        RRT::StepResult result;
         /* Sample random state (with goal biasing) for fine RRT */
         if (goal_s && rng_.uniform01() < fineRRTGoalBias_ && goal_s->canSample())
-	    {
- 	        /* Sample a goal and try to reach it from the existing tree */
-	        goal_s->sampleGoal(toState);
-	        result = fineRRT_->tryStepToGoal( toState, newMotion );
-	    }
+        {
+        /* Sample a goal and try to reach it from the existing tree */
+            goal_s->sampleGoal(toState);
+            result = fineRRT_->tryStepToGoal( toState, newMotion );
+
+        }
         else
-	    {
+        {
             /* Sample a random state and try to reach it from the existing tree */
+            //clock_t begin = clock();    
             sampler_->sampleUniform(toState);
-	        result = fineRRT_->tryStep( toState, newMotion );
+            //clock_t end = clock();  
+            //time_sampling = time_sampling + ((double)(end - begin))/CLOCKS_PER_SEC;   
+            result = fineRRT_->tryStep( toState, newMotion );
         }
 
         if ( result == RRT::STEP_REACHED || result == RRT::STEP_PROGRESS )
@@ -387,71 +472,77 @@ ompl::base::PlannerStatus ompl::geometric::ForageRRT::solve(const base::PlannerT
                 /* New node is goal! The RRT can now solve the problem */
                 approxdif = dist;
                 fineSolution = newMotion;
-		        coarseSolution = fineSeed;
+                coarseSolution = fineSeed;
                 break;
             }
             if (dist < approxdif)
             {
-		/* Not quite at goal, but new node is closer than any before, we have a new 'best' plan */
+        /* Not quite at goal, but new node is closer than any before, we have a new 'best' plan */
                 approxdif = dist;
                 approxFineSol = newMotion;
-		        approxCoarseSol = fineSeed;
+                approxCoarseSol = fineSeed;
             }
         }
 
-	    else
-	    {
-	        /* Attempted step has produced a collision */
+        else
+        {
+        /* Attempted step has produced a collision */
             /* Increment number of collisions encountered by the fine RRT */
-	        fineNumCollisions++;
-	        if (fineNumCollisions == maxFineNumCollisions_)
-	        {
-		        /* Collision limit for Fine RRT reached, let's give up and try another fine RRT from a different direction */
-		        fineNumCollisions = 0;
-		        numFineFailures++;
-		        if (numFineFailures == maxNumFineFailures_)
-		        {
-		            /* Too many fine RRTs have failed, let's grow coarse RRT to replenish well of seed nodes for Fine RRTs */
-		            numFineFailures = 0;
-		            growRRT(coarseRRT_, coarseRRTIncreaseSize_, coarseRRTGoalBias_);
-		        }
-   	            /* Seed the new fine RRT with the best node towards goal from the coarse RRT */
+            fineNumCollisions++;
+            if (fineNumCollisions == maxFineNumCollisions_)
+            {
+            /* Collision limit for Fine RRT reached, let's give up and try another fine RRT from a different direction */
+                fineNumCollisions = 0;
+                numFineFailures++;
+            if (numFineFailures == maxNumFineFailures_)
+            {
+                 /* Too many fine RRTs have failed, let's grow coarse RRT to replenish well of seed nodes for Fine RRTs */
+                 numFineFailures = 0;
+                 growRRT(coarseRRT_, coarseRRTIncreaseSize_, coarseRRTGoalBias_);
+            }
+                /* Seed the new fine RRT with the best node towards goal from the coarse RRT */
                 fineSeed = coarseRRT_->getBestGoalMotion();
-		        fineRRT_->clear();
+                fineRRT_->clear();
                 fineRRT_->addNode(fineSeed->state, NULL);
-	        }
-	    }
+            }
+        }
     }
-
+    //clock_t end2 = clock();  
+    //time_fine = time_fine + ((double)(end2 - begin2))/CLOCKS_PER_SEC;   
     /* No goal state was found, plan not solved */
     bool solved = false;
     bool approximate = false;
 
     if (fineSolution == NULL)
     {
-	/* Let's at least output best solution */
-        std::cout<<"Let's at least output best solution"<<std::endl;
+    /* Let's at least output best solution */
         fineSolution = approxFineSol;
-	    coarseSolution = approxCoarseSol;
+        coarseSolution = approxCoarseSol;
         approximate = true;
     }
 
     if (fineSolution != NULL)
     {
-	/* Return solution path, be it 'best without success' or successful */
-        std::cout<<"Return solution path"<<std::endl;
+    /* Return solution path, be it 'best without success' or successful */
         lastGoalMotion_ = fineSolution;
         PathGeometric *path = new PathGeometric(si_); 
-	    coarseRRT_->tracePath(coarseSolution, path);
-	    fineRRT_->tracePath(fineSolution, path);
+        coarseRRT_->tracePath(coarseSolution, path);
+        fineRRT_->tracePath(fineSolution, path);
         pdef_->addSolutionPath(base::PathPtr(path), approximate, approxdif);
         solved = true;
+
         //std::vector<base::State *> &states = path->getStates();
         //const base::SpaceInformationPtr &si = path->getSpaceInformation();
         //si->getStateSpace()->as<ompl_interface::ManipulatorModelStateSpace>()->manipulator_state_space_->printState(states.back()->as<ompl_interface::ManipulatorModelStateSpace::StateType>()->manipulator_state_,std::cout);
     }
     
-    std::cout<<"exit ForageRRT solve"<<std::endl;
+    //std::cout<<"Time for coarse stage: cost "<<time_coarse<<std::endl;
+    //std::cout<<"Time for fine stage: cost "<<time_fine<<std::endl;
+    //std::cout<<"Time for sampling: cost "<<time_sampling<<std::endl;
+    //std::cout<<"Time for collision check: cost "<<time_collisioncheck<<std::endl;
+    //std::cout<<"Time for jacobian: cost "<<time_jacobian<<std::endl;
+    //std::cout<<"Did Jacobian "<<count_jacobian<<" times during the whole planning process"<<std::endl;
+
     return base::PlannerStatus(solved, approximate);
 }
 

@@ -142,6 +142,7 @@ ompl::base::PlannerStatus ompl::geometric::RRT::solve(const base::PlannerTermina
             sampler_->sampleUniform(rstate);
 
         }
+        
         /* find closest state in the tree */
         Motion *nmotion = nn_->nearest(rmotion);
         base::State *dstate = rstate;

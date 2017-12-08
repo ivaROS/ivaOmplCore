@@ -55,8 +55,8 @@ bool ompl::base::GoalRegion::isSatisfied(const State *st, double *distance) cons
     double d2g = distanceGoal(st);
     if (distance)
         *distance = d2g;
-    std::cout<<"GoalRegion:: distance:"<<*distance<<std::endl;
-    std::cout<<"GoalRegion::private member:threshold_:"<<threshold_<<std::endl;
+    //std::cout<<"GoalRegion:: distance:"<<*distance<<std::endl;
+    //std::cout<<"GoalRegion::private member:threshold_:"<<threshold_<<std::endl;
     return d2g < threshold_;
 }
 

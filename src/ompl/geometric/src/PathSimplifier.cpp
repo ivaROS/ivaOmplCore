@@ -36,12 +36,25 @@
 
 #include "ompl/geometric/PathSimplifier.h"
 #include "ompl/tools/config/MagicConstants.h"
-#include <moveit/ompl_interface/parameterization/manipulator_space/manipulator_model_state_space.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+
 #include <algorithm>
 #include <limits>
 #include <cstdlib>
 #include <cmath>
 #include <map>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+#include <moveit/ompl_interface/parameterization/manipulator_space/manipulator_model_state_space.h>
+#include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space.h>
+#include <moveit/ompl_interface/parameterization/model_based_state_space.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_state/robot_state.h>
+#include <moveit/kinematic_constraints/kinematic_constraint.h>
+#include <moveit/constraint_samplers/constraint_sampler.h>
 
 ompl::geometric::PathSimplifier::PathSimplifier(const base::SpaceInformationPtr &si, const base::GoalPtr& goal) : si_(si), freeStates_(true)
 {
@@ -413,13 +426,46 @@ void ompl::geometric::PathSimplifier::simplify(PathGeometric &path, const base::
     std::cout<<"ompl::simplify"<<std::endl;
 
     const base::SpaceInformationPtr &si = path.getSpaceInformation();
-    std::vector<base::State *> &states = path.getStates();
-    std::cout<<"before simplify1,state nummber is "<<path.getStates().size()<<std::endl;
-    //path.getStates().pop_back();
+    std::vector<ompl::base::State*> &states = path.getStates();
+    unsigned int num_state = path.getStates().size();
+
+    /*
+    std::vector<double> goal_state1;
+    for (unsigned int i = 0; i < 7; i++)
+        goal_state1.push_back(states[num_state-1]->as<ompl_interface::JointModelStateSpace::StateType>()->values[i]);
+    
+    std::cout<<"before simplify,state nummber is "<<num_state<<std::endl;
+    
+    
+    for(unsigned int i = 0; i < path.getStates().size(); i++)
+    {
+        si->printState(states[i],std::cout);
+    }
+    */
+
+    /****************************************************
+        Forward kinematic and get pose configuration
+    *****************************************************/
+    /*
+    robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+    robot_model::RobotModelPtr kinematic_model = robot_model_loader.getModel();
+    ROS_INFO("Model frame: %s", kinematic_model->getModelFrame().c_str());
+  
+    robot_state::RobotStatePtr kinematic_state(new robot_state::RobotState(kinematic_model));
+    kinematic_state->setToDefaultValues();
+    const robot_state::JointModelGroup* joint_model_group = kinematic_model->getJointModelGroup("arm4");
+
+    //const std::vector<std::string> &joint_names = joint_model_group->getJointModelNames();
+
+    kinematic_state->setJointGroupPositions(joint_model_group, goal_state1);
+    const Eigen::Affine3d &end_effector_state1 = kinematic_state->getGlobalLinkTransform(kinematic_state->getLinkModel(joint_model_group->getLinkModelNames().back()));
+    Eigen::Quaterniond quaternion1(end_effector_state1.rotation());
+    Eigen::VectorXd eefPose1(7);//Eigen::VectorXd eefPose(3);//
+    eefPose1<<end_effector_state1.translation(),quaternion1.x(), quaternion1.y(), quaternion1.z(),quaternion1.w();
+    std::cout<<"pose configuration for the final state in the found path before simplify:"<<std::endl; 
+    std::cout<<eefPose1<<std::endl; 
 
     
-    std::cout<<"before simplify2,state nummber is "<<path.getStates().size()<<std::endl;
-    /*
     std::cout<<"before simplify, final state:"<<std::endl;
     si->getStateSpace()->as<ompl_interface::ManipulatorModelStateSpace>()->manipulator_state_space_->
     printState(states.back()->as<ompl_interface::ManipulatorModelStateSpace::StateType>()->manipulator_state_,std::cout);
@@ -470,8 +516,14 @@ void ompl::geometric::PathSimplifier::simplify(PathGeometric &path, const base::
         unsigned int times = 0;
         do
         {
-            bool shortcut = shortcutPath(path);                             // split path segments, not just vertices
+            bool shortcut = shortcutPath(path);  
+
+            std::cout<<"before findBetterGoal,state nummber is "<<path.getStates().size()<<std::endl;
+    
             //bool better_goal = gsr_ ? findBetterGoal(path, ptc) : false;    // Try to connect the path to a closer goal
+    
+            std::cout<<"before findBetterGoal,state nummber is "<<path.getStates().size()<<std::endl;                           // split path segments, not just vertices
+            
 
             tryMore = shortcut;// || better_goal;
         } while(ptc == false && tryMore && ++times <= 5);
@@ -501,6 +553,25 @@ void ompl::geometric::PathSimplifier::simplify(PathGeometric &path, const base::
             if (!p.first)
                 OMPL_DEBUG("The solution path was slightly touching on an invalid region of the state space, but it was successfully fixed.");
     }
+
+/*
+    num_state = path.getStates().size();
+    
+    std::cout<<"goal state joint configuration:"<<std::endl;
+    si->printState(states[num_state-1],std::cout);
+
+    std::vector<double> goal_state2;
+    for (unsigned int i = 0; i < 7; i++)
+        goal_state2.push_back(states[num_state-1]->as<ompl_interface::JointModelStateSpace::StateType>()->values[i]);
+
+    kinematic_state->setJointGroupPositions(joint_model_group, goal_state2);
+    const Eigen::Affine3d &end_effector_state2 = kinematic_state->getGlobalLinkTransform(kinematic_state->getLinkModel(joint_model_group->getLinkModelNames().back()));
+    Eigen::Quaterniond quaternion2(end_effector_state2.rotation());
+    Eigen::VectorXd eefPose2(7);//Eigen::VectorXd eefPose(3);//
+    eefPose2<<end_effector_state2.translation(),quaternion2.x(), quaternion2.y(), quaternion2.z(),quaternion2.w();
+    std::cout<<"pose configuration for the final state in the found path after simplify:"<<std::endl; 
+    std::cout<<eefPose2<<std::endl; 
+*/
 }
 
 bool ompl::geometric::PathSimplifier::findBetterGoal(PathGeometric &path, double maxTime, unsigned int samplingAttempts,

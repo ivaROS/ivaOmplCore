@@ -121,6 +121,11 @@ double ompl::base::DiscreteStateSpace::distance(const State *state1, const State
     return abs(state1->as<StateType>()->value - state2->as<StateType>()->value);
 }
 
+double ompl::base::DiscreteStateSpace::getscore(const State *state1, const State *state2) const
+{
+    return abs(state1->as<StateType>()->value - state2->as<StateType>()->value);
+}
+
 bool ompl::base::DiscreteStateSpace::equalStates(const State *state1, const State *state2) const
 {
     return state1->as<StateType>()->value == state2->as<StateType>()->value;

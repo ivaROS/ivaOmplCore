@@ -285,6 +285,11 @@ double ompl::base::SO3StateSpace::distance(const State *state1, const State *sta
     return arcLength(state1, state2);
 }
 
+double ompl::base::SO3StateSpace::getscore(const State *state1, const State *state2) const
+{
+    return arcLength(state1, state2);
+}
+
 bool ompl::base::SO3StateSpace::equalStates(const State *state1, const State *state2) const
 {
     return arcLength(state1, state2) < std::numeric_limits<double>::epsilon();

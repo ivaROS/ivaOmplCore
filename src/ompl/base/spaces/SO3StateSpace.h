@@ -146,6 +146,8 @@ namespace ompl
             virtual void deserialize(State *state, const void *serialization) const;
 
             virtual double distance(const State *state1, const State *state2) const;
+            
+            virtual double getscore(const State *state1, const State *state2) const;
 
             virtual bool equalStates(const State *state1, const State *state2) const;
 

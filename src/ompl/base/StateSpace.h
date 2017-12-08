@@ -37,6 +37,11 @@
 #ifndef OMPL_BASE_STATE_SPACE_
 #define OMPL_BASE_STATE_SPACE_
 
+// MoveIt!
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_state/robot_state.h>
+
 #include "ompl/base/State.h"
 #include "ompl/base/StateSpaceTypes.h"
 #include "ompl/base/StateSampler.h"
@@ -301,6 +306,9 @@ namespace ompl
                 metric if isMetricSpace() is true, and its return value will always be between 0 and getMaximumExtent() */
             virtual double distance(const State *state1, const State *state2) const = 0;
 
+            /* get the score of the distance from state1 to state2 */
+            virtual double getscore(const State *state1, const State *state2) const = 0;
+
             /** \brief Get the number of chars in the serialization of a state in this space */
             virtual unsigned int getSerializationLength() const;
 
@@ -317,6 +325,8 @@ namespace ompl
                 The memory location of @e state is not required to be different from the memory of either
                 @e from or @e to. */
             virtual void interpolate(const State *from, const State *to, const double t, State *state) const = 0;
+            
+            //virtual void interpolate（const State *from, const State *to, const double t, State *state，const robot_model_loader::RobotModelLoader* robot_model_loader) const = 0;
 
             /** \brief Allocate an instance of the default uniform state sampler for this space */
             virtual StateSamplerPtr allocDefaultStateSampler() const = 0;
@@ -665,6 +675,8 @@ namespace ompl
 
             virtual double distance(const State *state1, const State *state2) const;
 
+            virtual double getscore(const State *state1, const State *state2) const;
+
             /** \brief When performing discrete validation of motions,
                 the length of the longest segment that does not
                 require state validation needs to be specified. This
@@ -679,6 +691,8 @@ namespace ompl
             virtual bool equalStates(const State *state1, const State *state2) const;
 
             virtual void interpolate(const State *from, const State *to, const double t, State *state) const;
+
+            //virtual void interpolate（const State *from, const State *to, const double t, State *state，const robot_model_loader::RobotModelLoader* robot_model_loader) const;
 
             virtual StateSamplerPtr allocDefaultStateSampler() const;
 

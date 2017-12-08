@@ -142,6 +142,11 @@ namespace ompl
                 return as<RealVectorStateSpace>(0)->getBounds();
             }
 
+            double getscore(const State *state1, const State *state2) const
+            {
+                return as<RealVectorStateSpace>(0)->getscore(state1,state2);
+            }
+
             virtual State* allocState() const;
             virtual void freeState(State *state) const;
 

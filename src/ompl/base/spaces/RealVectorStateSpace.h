@@ -165,6 +165,8 @@ namespace ompl
 
             virtual double distance(const State *state1, const State *state2) const;
 
+            virtual double getscore(const State *state1, const State *state2) const;
+
             virtual bool equalStates(const State *state1, const State *state2) const;
 
             virtual void interpolate(const State *from, const State *to, const double t, State *state) const;

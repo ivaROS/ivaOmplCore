@@ -363,6 +363,12 @@ unsigned int ompl::base::StateSpace::getSerializationLength() const
     return 0;
 }
 
+double ompl::base::StateSpace::getscore(const State* /* *state1 */, const State* /* *state2 */) const
+{
+
+}
+
+
 void ompl::base::StateSpace::serialize(void* /*serialization*/, const State* /*state*/) const
 {
 }
@@ -1047,6 +1053,16 @@ void ompl::base::CompoundStateSpace::deserialize(State *state, const void *seria
         components_[i]->deserialize(cstate->components[i], reinterpret_cast<const char*>(serialization) + l);
         l += components_[i]->getSerializationLength();
     }
+}
+
+double ompl::base::CompoundStateSpace::getscore(const State *state1, const State *state2) const
+{
+    const CompoundState *cstate1 = static_cast<const CompoundState*>(state1);
+    const CompoundState *cstate2 = static_cast<const CompoundState*>(state2);
+    double dist = 0.0;
+    for (unsigned int i = 0 ; i < componentCount_ ; ++i)
+        dist += weights_[i] * components_[i]->distance(cstate1->components[i], cstate2->components[i]);
+    return dist;    
 }
 
 double ompl::base::CompoundStateSpace::distance(const State *state1, const State *state2) const

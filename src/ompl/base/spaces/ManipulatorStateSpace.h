@@ -184,6 +184,7 @@ namespace ompl
 	    Eigen::VectorXd getEigenJoints(const State *state) const;
 
 	    virtual double distance(const State *state1, const State *state2) const;
+            double getscore(const State *state1, const State *state2) const;
 	    virtual void interpolate(const State *from, const State *to, const double t, State *state) const;
 	    bool equalStates(const State *state1, const State *state2) const;
 

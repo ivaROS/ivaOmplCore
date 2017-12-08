@@ -131,6 +131,11 @@ double ompl::base::TimeStateSpace::distance(const State *state1, const State *st
     return fabs(state1->as<StateType>()->position - state2->as<StateType>()->position);
 }
 
+double ompl::base::TimeStateSpace::getscore(const State *state1, const State *state2) const
+{
+    return fabs(state1->as<StateType>()->position - state2->as<StateType>()->position);
+}
+
 bool ompl::base::TimeStateSpace::equalStates(const State *state1, const State *state2) const
 {
     return fabs(state1->as<StateType>()->position - state2->as<StateType>()->position) < std::numeric_limits<double>::epsilon() * 2.0;
