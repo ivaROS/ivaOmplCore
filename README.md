@@ -31,3 +31,16 @@ following commands:
     make installpyplusplus && cmake . # download & install Py++
     make update_bindings # if you want Python bindings
     make -j 4 # replace "4" with the number of cores on your machine
+
+The above is the installation guide from official repository but since we modified and added new planner and state space to ompl, the installation process will be a little bit tricky because MoveIt! and ompl depend on each other right now.
+```
+1. Follow the official tutorial to install source version of MoveIt!, binary verison of ompl will be installed during the installation.
+2. go to your local folder to remove the installed binary ompl.
+3. cd path_to_ompl
+   mkdir -p build/Release
+   cd build/Release
+   cmake DCMAKE_INSTALL_PREFIX=/opt/ros/indigo ../..
+   make -j4
+   sudo make install
+4. remove the official MoveIt! package, git clone ivaMoveitCore repository and do catkin_make
+```
