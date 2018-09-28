@@ -1,11 +1,9 @@
 #The Open Motion Planning Library (OMPL)
 =======================================
 
-Linux / OS X [![Build Status](https://travis-ci.org/ompl/ompl.svg?branch=master)](https://travis-ci.org/ompl/ompl)
-Windows [![Build status](https://ci.appveyor.com/api/projects/status/valuv9sabye1y35n/branch/master?svg=true)](https://ci.appveyor.com/project/mamoll/ompl/branch/master)
-
-Visit the [OMPL installation page](http://ompl.kavrakilab.org/core/installation.html) for
-detailed installation instructions.
+##OS
+Linux: Ubuntu 14.04
+ROS: Indigo
 
 ## Dependency
 OMPL has the following required dependencies:
