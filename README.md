@@ -1,10 +1,8 @@
 #The Open Motion Planning Library (OMPL)
 =======================================
 
-##OS
-
+## OS
 Linux: Ubuntu 14.04
-
 ROS: Indigo
 
 ## Dependency
