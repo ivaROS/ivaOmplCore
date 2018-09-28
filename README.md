@@ -1,4 +1,4 @@
-The Open Motion Planning Library (OMPL)
+#The Open Motion Planning Library (OMPL)
 =======================================
 
 Linux / OS X [![Build Status](https://travis-ci.org/ompl/ompl.svg?branch=master)](https://travis-ci.org/ompl/ompl)
@@ -7,6 +7,7 @@ Windows [![Build status](https://ci.appveyor.com/api/projects/status/valuv9sabye
 Visit the [OMPL installation page](http://ompl.kavrakilab.org/core/installation.html) for
 detailed installation instructions.
 
+## Dependency
 OMPL has the following required dependencies:
 
 * [Boost](http://www.boost.org) (version 1.48 or higher)
@@ -20,6 +21,7 @@ The following dependencies are optional:
   http://ompl.kavrakilab.org/core)
 * [Eigen](http://eigen.tuxfamily.org) (needed for an informed sampling technique to improve the optimization of path length)
 
+## Compile and build
 Once dependencies are installed, you can build OMPL on Linux, OS X,
 and MS Windows. Go to the top-level directory of OMPL and type the
 following commands:
