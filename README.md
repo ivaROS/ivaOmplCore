@@ -38,7 +38,8 @@ The above is the installation guide from official repository but since we modifi
 ```
 1. Follow the official tutorial to install source version of MoveIt!, binary verison of ompl will be installed during the installation.
 2. go to your local folder to remove the installed binary ompl.
-3. cd path_to_ompl
+3. Install source modified ompl as follows:
+   cd path_to_ompl
    mkdir -p build/Release
    cd build/Release
    cmake DCMAKE_INSTALL_PREFIX=/opt/ros/indigo ../..
